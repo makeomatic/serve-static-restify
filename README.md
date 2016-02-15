@@ -10,13 +10,13 @@
 ## Install
 
 ```sh
-$ npm install serve-static
+$ npm install serve-static-restify -S
 ```
 
 ## API
 
 ```js
-var serveStatic = require('serve-static')
+var serveStatic = require('serve-static-restify')
 ```
 
 ### serveStatic(root, options)
@@ -114,7 +114,7 @@ the arguments are:
 ```js
 var finalhandler = require('finalhandler')
 var http = require('http')
-var serveStatic = require('serve-static')
+var serveStatic = require('serve-static-restify')
 
 // Serve up public/ftp folder
 var serve = serveStatic('public/ftp', {'index': ['index.html', 'index.htm']})
@@ -135,7 +135,7 @@ server.listen(3000)
 var contentDisposition = require('content-disposition')
 var finalhandler = require('finalhandler')
 var http = require('http')
-var serveStatic = require('serve-static')
+var serveStatic = require('serve-static-restify')
 
 // Serve up public/ftp folder
 var serve = serveStatic('public/ftp', {
@@ -162,15 +162,15 @@ server.listen(3000)
 
 #### Simple
 
-This is a simple example of using Express.
+This is a simple example of using Restify.
 
 ```js
-var express = require('express')
-var serveStatic = require('serve-static')
+var restify = require('restify')
+var serveStatic = require('serve-static-restify')
 
-var app = express()
+var app = restify.createServer()
 
-app.use(serveStatic('public/ftp', {'index': ['default.html', 'default.htm']}))
+app.pre(serveStatic('public/ftp', {'index': ['default.html', 'default.htm']}))
 app.listen(3000)
 ```
 
@@ -181,13 +181,13 @@ Files are look for in `public-optimized/` first, then `public/` second as
 a fallback.
 
 ```js
-var express = require('express')
-var serveStatic = require('serve-static')
+var restify = require('restify')
+var serveStatic = require('serve-static-restify')
 
-var app = express()
+var app = restify.createServer()
 
-app.use(serveStatic(__dirname + '/public-optimized'))
-app.use(serveStatic(__dirname + '/public'))
+app.pre(serveStatic(__dirname + '/public-optimized'))
+app.pre(serveStatic(__dirname + '/public'))
 app.listen(3000)
 ```
 
@@ -198,12 +198,12 @@ file type. In this example, HTML files are not cached, while everything else
 is for 1 day.
 
 ```js
-var express = require('express')
-var serveStatic = require('serve-static')
+var restify = require('restify')
+var serveStatic = require('serve-static-restify')
 
-var app = express()
+var app = restify.createServer()
 
-app.use(serveStatic(__dirname + '/public', {
+app.pre(serveStatic(__dirname + '/public', {
   maxAge: '1d',
   setHeaders: setCustomCacheControl
 }))

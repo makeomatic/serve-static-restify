@@ -79,7 +79,7 @@ function serveStatic(root, options) {
       res.setHeader('Allow', 'GET, HEAD')
       res.setHeader('Content-Length', '0')
       res.end()
-      return
+      return next(false)
     }
 
     var forwardError = !fallthrough
@@ -122,6 +122,11 @@ function serveStatic(root, options) {
 
     // pipe
     stream.pipe(res)
+
+    // make sure loop is not stuck
+    res.on('finish', function end() {
+      next(false)
+    })
   }
 }
 

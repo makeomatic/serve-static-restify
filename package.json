@@ -1,19 +1,26 @@
 {
-  "name": "serve-static",
+  "name": "serve-static-restify",
   "description": "Serve static files",
-  "version": "1.10.2",
+  "version": "1.0.0",
   "author": "Douglas Christopher Wilson <doug@somethingdoug.com>",
+  "contributors": [
+    "Vitaly Aminev <v@makeomatic.ru>"
+  ],
   "license": "MIT",
-  "repository": "expressjs/serve-static",
+  "repository": "makeomatic/serve-static-restify",
   "dependencies": {
     "escape-html": "~1.0.3",
     "parseurl": "~1.3.1",
     "send": "0.13.1"
   },
+  "peerDependencies": {
+    "restify": "~4.x.x"
+  },
   "devDependencies": {
     "istanbul": "0.4.2",
-    "mocha": "2.3.4",
-    "supertest": "1.1.0"
+    "mocha": "^2.4.5",
+    "restify": "4.0.4",
+    "supertest": "^1.2.0"
   },
   "files": [
     "LICENSE",

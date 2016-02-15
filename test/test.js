@@ -1,4 +1,5 @@
 
+var restify = require('restify');
 var assert = require('assert');
 var http = require('http');
 var path = require('path');
@@ -93,7 +94,7 @@ describe('serveStatic()', function(){
     it('should skip POST requests', function(done){
       request(server)
       .post('/todo.txt')
-      .expect(404, 'sorry!', done);
+      .expect(404, format404Error('/todo.txt'), done);
     });
 
     it('should support conditional requests', function(done){
@@ -181,7 +182,7 @@ describe('serveStatic()', function(){
     it('should default to true', function (done) {
       request(createServer())
       .get('/does-not-exist')
-      .expect(404, 'sorry!', done)
+      .expect(404, format404Error('/does-not-exist'), done)
     })
 
     describe('when true', function () {
@@ -192,25 +193,25 @@ describe('serveStatic()', function(){
       it('should fall-through when OPTIONS request', function (done) {
         request(this.server)
         .options('/todo.txt')
-        .expect(404, 'sorry!', done)
+        .expect(404, format404Error('/todo.txt'), done)
       })
 
       it('should fall-through when URL malformed', function (done) {
         request(this.server)
         .get('/%')
-        .expect(404, 'sorry!', done)
+        .expect(404, '{"code":"ResourceNotFound","message":"/% does not exist"}', done)
       })
 
       it('should fall-through when traversing past root', function (done) {
         request(this.server)
         .get('/users/../../todo.txt')
-        .expect(404, 'sorry!', done)
+        .expect(404, format404Error('/users/../../todo.txt'), done)
       })
 
       it('should fall-through when URL too long', function (done) {
         request(this.server)
         .get('/' + Array(8192).join('foobar'))
-        .expect(404, 'sorry!', done)
+        .expect(404, format404Error('/' + Array(8192).join('foobar')), done)
       })
 
       describe('with redirect: true', function () {
@@ -221,7 +222,7 @@ describe('serveStatic()', function(){
         it('should fall-through when directory', function (done) {
           request(this.server)
           .get('/pets/')
-          .expect(404, 'sorry!', done)
+          .expect(404, format404Error('/pets/'), done)
         })
 
         it('should redirect when directory without slash', function (done) {
@@ -239,13 +240,13 @@ describe('serveStatic()', function(){
         it('should fall-through when directory', function (done) {
           request(this.server)
           .get('/pets/')
-          .expect(404, 'sorry!', done)
+          .expect(404, format404Error('/pets/'), done)
         })
 
         it('should fall-through when directory without slash', function (done) {
           request(this.server)
           .get('/pets')
-          .expect(404, 'sorry!', done)
+          .expect(404, format404Error('/pets'), done)
         })
       })
     })
@@ -265,13 +266,13 @@ describe('serveStatic()', function(){
       it('should 400 when URL malformed', function (done) {
         request(this.server)
         .get('/%')
-        .expect(400, /BadRequestError/, done)
+        .expect(400, /Bad Request/, done)
       })
 
       it('should 403 when traversing past root', function (done) {
         request(this.server)
         .get('/users/../../todo.txt')
-        .expect(403, /ForbiddenError/, done)
+        .expect(403, /Forbidden/, done)
       })
 
       it('should 404 when URL too long', function (done) {
@@ -288,7 +289,7 @@ describe('serveStatic()', function(){
         it('should 404 when directory', function (done) {
           request(this.server)
           .get('/pets/')
-          .expect(404, /NotFoundError|ENOENT/, done)
+          .expect(404, /Not Found|ENOENT/, done)
         })
 
         it('should redirect when directory without slash', function (done) {
@@ -306,13 +307,13 @@ describe('serveStatic()', function(){
         it('should 404 when directory', function (done) {
           request(this.server)
           .get('/pets/')
-          .expect(404, /NotFoundError|ENOENT/, done)
+          .expect(404, /Not Found|ENOENT/, done)
         })
 
         it('should 404 when directory without slash', function (done) {
           request(this.server)
           .get('/pets')
-          .expect(404, /NotFoundError|ENOENT/, done)
+          .expect(404, /Not Found|ENOENT/, done)
         })
       })
     })
@@ -647,6 +648,8 @@ describe('serveStatic()', function(){
     before(function () {
       server = createServer(fixtures, {'index': false}, function (req) {
         // mimic express/connect mount
+        // WARN: mount points are not supported in restify, therefore
+        // 404 errors are not what they should be
         req.originalUrl = req.url;
         req.url = '/' + req.url.split('/').slice(2).join('/');
       });
@@ -655,7 +658,7 @@ describe('serveStatic()', function(){
     it('should next() on directory', function (done) {
       request(server)
       .get('/static/users/')
-      .expect(404, 'sorry!', done);
+      .expect(404, format404Error('/users/'), done);
     });
 
     it('should redirect to trailing slash', function (done) {
@@ -668,7 +671,7 @@ describe('serveStatic()', function(){
     it('should next() on mount point', function (done) {
       request(server)
       .get('/static/')
-      .expect(404, 'sorry!', done);
+      .expect(404, format404Error('/'), done);
     });
 
     it('should redirect to trailing slash mount point', function (done) {
@@ -680,18 +683,25 @@ describe('serveStatic()', function(){
   });
 });
 
+function format404Error(path) {
+  return '{"code":"ResourceNotFound","message":"' + path + ' does not exist"}';
+}
+
 function createServer(dir, opts, fn) {
   dir = dir || fixtures;
 
   var _serve = serveStatic(dir, opts);
+  var server = restify.createServer();
 
-  return http.createServer(function (req, res) {
-    fn && fn(req, res);
-    _serve(req, res, function (err) {
-      res.statusCode = err ? (err.status || 500) : 404;
-      res.end(err ? err.stack : 'sorry!');
+  if (fn) {
+    server.pre(function applyFn(req, res, next) {
+      fn(req, res);
+      next();
     });
-  });
+  }
+
+  server.pre(_serve);
+  return server;
 }
 
 function shouldNotHaveHeader(header) {
