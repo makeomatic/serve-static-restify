@@ -124,7 +124,7 @@ function serveStatic(root, options) {
     stream.pipe(res)
 
     // make sure loop is not stuck
-    res.on('finish', function end() {
+    res.once('finish', function end() {
       next(false)
     })
   }
