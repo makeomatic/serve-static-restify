@@ -1,5 +1,7 @@
 # serve-static
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/makeomatic/serve-static-restify.svg)](https://greenkeeper.io/)
+
 [![NPM Version][npm-image]][npm-url]
 [![NPM Downloads][downloads-image]][downloads-url]
 
