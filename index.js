@@ -2,7 +2,8 @@
  * serve-static
  * Copyright(c) 2010 Sencha Inc.
  * Copyright(c) 2011 TJ Holowaychuk
- * Copyright(c) 2014-2015 Douglas Christopher Wilson
+ * Copyright(c) 2014-2016 Douglas Christopher Wilson
+ * Copyright(c) 2016-2017 Vitaly Aminev
  * MIT Licensed
  */
 
@@ -13,6 +14,7 @@
  * @private
  */
 
+var encodeUrl = require('encodeurl')
 var escapeHtml = require('escape-html')
 var parseUrl = require('parseurl')
 var resolve = require('path').resolve
@@ -34,7 +36,7 @@ module.exports.mime = send.mime
  * @public
  */
 
-function serveStatic(root, options) {
+function serveStatic (root, options) {
   if (!root) {
     throw new TypeError('root path required')
   }
@@ -68,7 +70,7 @@ function serveStatic(root, options) {
     ? createRedirectDirectoryListener()
     : createNotFoundDirectoryListener()
 
-  return function serveStatic(req, res, next) {
+  return function serveStatic (req, res, next) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       if (fallthrough) {
         return next()
@@ -104,14 +106,14 @@ function serveStatic(root, options) {
 
     // add file listener for fallthrough
     if (fallthrough) {
-      stream.on('file', function onFile() {
+      stream.once('file', function onFile () {
         // once file is determined, always forward error
         forwardError = true
       })
     }
 
     // forward errors
-    stream.on('error', function error(err) {
+    stream.on('error', function error (err) {
       if (forwardError || !(err.statusCode < 500)) {
         next(err)
         return
@@ -120,13 +122,13 @@ function serveStatic(root, options) {
       next()
     })
 
-    // pipe
-    stream.pipe(res)
-
     // make sure loop is not stuck
-    res.once('finish', function end() {
+    stream.once('end', function end () {
       next(false)
     })
+
+    // pipe
+    stream.pipe(res)
   }
 }
 
@@ -134,7 +136,7 @@ function serveStatic(root, options) {
  * Collapse all leading slashes into a single slash
  * @private
  */
-function collapseLeadingSlashes(str) {
+function collapseLeadingSlashes (str) {
   for (var i = 0; i < str.length; i++) {
     if (str[i] !== '/') {
       break
@@ -147,12 +149,32 @@ function collapseLeadingSlashes(str) {
 }
 
 /**
+ * Create a minimal HTML document.
+ *
+ * @param {string} title
+ * @param {string} body
+ * @private
+ */
+
+function createHtmlDocument (title, body) {
+  return '<!DOCTYPE html>\n' +
+    '<html lang="en">\n' +
+    '<head>\n' +
+    '<meta charset="utf-8">\n' +
+    '<title>' + title + '</title>\n' +
+    '</head>\n' +
+    '<body>\n' +
+    '<pre>' + body + '</pre>\n' +
+    '</body>\n'
+}
+
+/**
  * Create a directory listener that just 404s.
  * @private
  */
 
-function createNotFoundDirectoryListener() {
-  return function notFound() {
+function createNotFoundDirectoryListener () {
+  return function notFound () {
     this.error(404)
   }
 }
@@ -162,8 +184,8 @@ function createNotFoundDirectoryListener() {
  * @private
  */
 
-function createRedirectDirectoryListener() {
-  return function redirect() {
+function createRedirectDirectoryListener () {
+  return function redirect (res) {
     if (this.hasTrailingSlash()) {
       this.error(404)
       return
@@ -177,16 +199,17 @@ function createRedirectDirectoryListener() {
     originalUrl.pathname = collapseLeadingSlashes(originalUrl.pathname + '/')
 
     // reformat the URL
-    var loc = url.format(originalUrl)
-    var msg = 'Redirecting to <a href="' + escapeHtml(loc) + '">' + escapeHtml(loc) + '</a>\n'
-    var res = this.res
+    var loc = encodeUrl(url.format(originalUrl))
+    var doc = createHtmlDocument('Redirecting', 'Redirecting to <a href="' + escapeHtml(loc) + '">' +
+      escapeHtml(loc) + '</a>')
 
     // send redirect response
-    res.statusCode = 303
+    res.statusCode = 301
     res.setHeader('Content-Type', 'text/html; charset=UTF-8')
-    res.setHeader('Content-Length', Buffer.byteLength(msg))
+    res.setHeader('Content-Length', Buffer.byteLength(doc))
+    res.setHeader('Content-Security-Policy', "default-src 'self'")
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('Location', loc)
-    res.end(msg)
+    res.end(doc)
   }
 }

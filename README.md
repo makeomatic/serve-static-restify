@@ -5,11 +5,17 @@
 
 ## Install
 
+This is a [Node.js](https://nodejs.org/en/) module available through the
+[npm registry](https://www.npmjs.com/). Installation is done using the
+[`npm install` command](https://docs.npmjs.com/getting-started/installing-npm-packages-locally):
+
 ```sh
 $ npm install serve-static-restify -S
 ```
 
 ## API
+
+<!-- eslint-disable no-unused-vars -->
 
 ```js
 var serveStatic = require('serve-static-restify')
@@ -24,6 +30,17 @@ sending a 404 response, this module will instead call `next()` to move on
 to the next middleware, allowing for stacking and fall-backs.
 
 #### Options
+
+##### acceptRanges
+
+Enable or disable accepting ranged requests, defaults to true.
+Disabling this will not send `Accept-Ranges` and ignore the contents
+of the `Range` request header.
+
+##### cacheControl
+
+Enable or disable setting `Cache-Control` response header, defaults to
+true. Disabling this will ignore the `maxAge` option.
 
 ##### dotfiles
 
@@ -116,9 +133,8 @@ var serveStatic = require('serve-static-restify')
 var serve = serveStatic('public/ftp', {'index': ['index.html', 'index.htm']})
 
 // Create server
-var server = http.createServer(function(req, res){
-  var done = finalhandler(req, res)
-  serve(req, res, done)
+var server = http.createServer(function onRequest (req, res) {
+  serve(req, res, finalhandler(req, res))
 })
 
 // Listen
@@ -140,14 +156,13 @@ var serve = serveStatic('public/ftp', {
 })
 
 // Set header to force download
-function setHeaders(res, path) {
+function setHeaders (res, path) {
   res.setHeader('Content-Disposition', contentDisposition(path))
 }
 
 // Create server
-var server = http.createServer(function(req, res){
-  var done = finalhandler(req, res)
-  serve(req, res, done)
+var server = http.createServer(function onRequest (req, res) {
+  serve(req, res, finalhandler(req, res))
 })
 
 // Listen
@@ -177,13 +192,24 @@ Files are look for in `public-optimized/` first, then `public/` second as
 a fallback.
 
 ```js
+<<<<<<< HEAD
 var restify = require('restify')
 var serveStatic = require('serve-static-restify')
+=======
+var express = require('express')
+var path = require('path')
+var serveStatic = require('serve-static')
+>>>>>>> c16b4d1c2c7bc1aaf76194187f087549b63bf2f9
 
 var app = restify.createServer()
 
+<<<<<<< HEAD
 app.pre(serveStatic(__dirname + '/public-optimized'))
 app.pre(serveStatic(__dirname + '/public'))
+=======
+app.use(serveStatic(path.join(__dirname, 'public-optimized')))
+app.use(serveStatic(path.join(__dirname, 'public')))
+>>>>>>> c16b4d1c2c7bc1aaf76194187f087549b63bf2f9
 app.listen(3000)
 ```
 
@@ -194,19 +220,29 @@ file type. In this example, HTML files are not cached, while everything else
 is for 1 day.
 
 ```js
+<<<<<<< HEAD
 var restify = require('restify')
 var serveStatic = require('serve-static-restify')
+=======
+var express = require('express')
+var path = require('path')
+var serveStatic = require('serve-static')
+>>>>>>> c16b4d1c2c7bc1aaf76194187f087549b63bf2f9
 
 var app = restify.createServer()
 
+<<<<<<< HEAD
 app.pre(serveStatic(__dirname + '/public', {
+=======
+app.use(serveStatic(path.join(__dirname, 'public'), {
+>>>>>>> c16b4d1c2c7bc1aaf76194187f087549b63bf2f9
   maxAge: '1d',
   setHeaders: setCustomCacheControl
 }))
 
 app.listen(3000)
 
-function setCustomCacheControl(res, path) {
+function setCustomCacheControl (res, path) {
   if (serveStatic.mime.lookup(path) === 'text/html') {
     // Custom Cache-Control for HTML files
     res.setHeader('Cache-Control', 'public, max-age=0')
