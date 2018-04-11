@@ -40,7 +40,7 @@ of the `Range` request header.
 ##### cacheControl
 
 Enable or disable setting `Cache-Control` response header, defaults to
-true. Disabling this will ignore the `maxAge` option.
+true. Disabling this will ignore the `immutable` and `maxAge` options.
 
 ##### dotfiles
 
@@ -88,6 +88,14 @@ short-circuiting 404s for less overhead. This middleware will also reply to
 all methods.
 
 The default value is `true`.
+
+##### immutable
+
+Enable or disable the `immutable` directive in the `Cache-Control` response
+header, defaults to `false`. If set to `true`, the `maxAge` option should
+also be specified to enable caching. The `immutable` directive will prevent
+supported clients from making conditional requests during the life of the
+`maxAge` option to check if the file has changed.
 
 ##### index
 
@@ -192,24 +200,13 @@ Files are look for in `public-optimized/` first, then `public/` second as
 a fallback.
 
 ```js
-<<<<<<< HEAD
 var restify = require('restify')
 var serveStatic = require('serve-static-restify')
-=======
-var express = require('express')
-var path = require('path')
-var serveStatic = require('serve-static')
->>>>>>> c16b4d1c2c7bc1aaf76194187f087549b63bf2f9
 
 var app = restify.createServer()
 
-<<<<<<< HEAD
 app.pre(serveStatic(__dirname + '/public-optimized'))
 app.pre(serveStatic(__dirname + '/public'))
-=======
-app.use(serveStatic(path.join(__dirname, 'public-optimized')))
-app.use(serveStatic(path.join(__dirname, 'public')))
->>>>>>> c16b4d1c2c7bc1aaf76194187f087549b63bf2f9
 app.listen(3000)
 ```
 
@@ -220,22 +217,12 @@ file type. In this example, HTML files are not cached, while everything else
 is for 1 day.
 
 ```js
-<<<<<<< HEAD
 var restify = require('restify')
 var serveStatic = require('serve-static-restify')
-=======
-var express = require('express')
-var path = require('path')
-var serveStatic = require('serve-static')
->>>>>>> c16b4d1c2c7bc1aaf76194187f087549b63bf2f9
 
 var app = restify.createServer()
 
-<<<<<<< HEAD
 app.pre(serveStatic(__dirname + '/public', {
-=======
-app.use(serveStatic(path.join(__dirname, 'public'), {
->>>>>>> c16b4d1c2c7bc1aaf76194187f087549b63bf2f9
   maxAge: '1d',
   setHeaders: setCustomCacheControl
 }))
