@@ -61,6 +61,9 @@ function serveStatic (root, options) {
     throw new TypeError('option setHeaders must be function')
   }
 
+  // restify-specific - use this as mount point when present
+  var pathParam = opts.pathParam || false
+
   // setup options for send
   opts.maxage = opts.maxage || opts.maxAge || 0
   opts.root = resolve(root)
@@ -86,7 +89,13 @@ function serveStatic (root, options) {
 
     var forwardError = !fallthrough
     var originalUrl = parseUrl.original(req)
-    var path = parseUrl(req).pathname
+    var path = ''
+
+    if (pathParam === false) {
+      path = parseUrl(req).pathname
+    } else {
+      path = req.params[pathParam] || '/'
+    }
 
     // make sure redirect occurs at mount
     if (path === '/' && originalUrl.pathname.substr(-1) !== '/') {

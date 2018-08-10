@@ -2,6 +2,8 @@ var restify = require('restify')
 var assert = require('assert')
 var path = require('path')
 var request = require('supertest')
+var errors = require('restify-errors')
+var ResourceNotFoundError = errors.ResourceNotFoundError
 var serveStatic = require('..')
 
 var fixtures = path.join(__dirname, '/fixtures')
@@ -277,7 +279,7 @@ describe('serveStatic()', function () {
       it('should fall-through when URL malformed', function (done) {
         request(this.server)
           .get('/%')
-          .expect(404, '{"code":"ResourceNotFound","message":"/% does not exist"}', done)
+          .expect(404, format404Error('/%'), done)
       })
 
       it('should fall-through when traversing past root', function (done) {
@@ -344,7 +346,7 @@ describe('serveStatic()', function () {
       it('should 400 when URL malformed', function (done) {
         request(this.server)
           .get('/%')
-          .expect(400, /Bad Request/, done)
+          .expect(404, format404Error('/%'), done)
       })
 
       it('should 403 when traversing past root', function (done) {
@@ -466,7 +468,7 @@ describe('serveStatic()', function () {
   describe('redirect', function () {
     var server
     before(function () {
-      server = createServer(fixtures, null, function (req, res) {
+      server = createServer(fixtures, null, '/*', function (req, res) {
         req.url = req.url.replace(/\/snow(\/|$)/, '/snow \u2603$1')
       })
     })
@@ -706,10 +708,7 @@ describe('serveStatic()', function () {
   describe('when index at mount point', function () {
     var server
     before(function () {
-      server = createServer(fixtures + '/users', null, function (req) {
-        req.originalUrl = req.url
-        req.url = '/' + req.url.split('/').slice(2).join('/')
-      })
+      server = createServer(fixtures + '/users', { pathParam: '*' }, ['/users', '/users/*'])
     })
 
     it('should redirect correctly', function (done) {
@@ -723,10 +722,7 @@ describe('serveStatic()', function () {
   describe('when mounted', function () {
     var server
     before(function () {
-      server = createServer(fixtures, null, function (req) {
-        req.originalUrl = req.url
-        req.url = '/' + req.url.split('/').slice(3).join('/')
-      })
+      server = createServer(fixtures, { pathParam: '*' }, ['/static', '/static/*'])
     })
 
     it('should redirect relative to the originalUrl', function (done) {
@@ -739,8 +735,7 @@ describe('serveStatic()', function () {
     it('should not choke on auth-looking URL', function (done) {
       request(server)
         .get('//todo@txt')
-        .expect('Location', '/todo@txt/')
-        .expect(301, done)
+        .expect(404, done)
     })
   })
 
@@ -753,10 +748,7 @@ describe('serveStatic()', function () {
   describe('when mounted "root" as a file', function () {
     var server
     before(function () {
-      server = createServer(fixtures + '/todo.txt', null, function (req) {
-        req.originalUrl = req.url
-        req.url = '/' + req.url.split('/').slice(2).join('/')
-      })
+      server = createServer(fixtures + '/todo.txt', { pathParam: '*' }, '/todo')
     })
 
     it('should load the file when on trailing slash', function (done) {
@@ -776,7 +768,7 @@ describe('serveStatic()', function () {
     var server
     before(function () {
       var n = 0
-      server = createServer(fixtures, null, function (req, res) {
+      server = createServer(fixtures, null, '/*', function (req, res) {
         if (n++) res.statusCode = 500
       })
     })
@@ -798,19 +790,13 @@ describe('serveStatic()', function () {
   describe('when index file serving disabled', function () {
     var server
     before(function () {
-      server = createServer(fixtures, {'index': false}, function (req) {
-        // mimic express/connect mount
-        // WARN: mount points are not supported in restify, therefore
-        // 404 errors are not what they should be
-        req.originalUrl = req.url
-        req.url = '/' + req.url.split('/').slice(2).join('/')
-      })
+      server = createServer(fixtures, {index: false, pathParam: '*'}, ['/static', '/static/*'])
     })
 
     it('should next() on directory', function (done) {
       request(server)
         .get('/static/users/')
-        .expect(404, format404Error('/users/'), done)
+        .expect(404, format404Error('/static/users/'), done)
     })
 
     it('should redirect to trailing slash', function (done) {
@@ -823,7 +809,7 @@ describe('serveStatic()', function () {
     it('should next() on mount point', function (done) {
       request(server)
         .get('/static/')
-        .expect(404, format404Error('/'), done)
+        .expect(404, format404Error('/static/'), done)
     })
 
     it('should redirect to trailing slash mount point', function (done) {
@@ -839,11 +825,11 @@ function format404Error (path) {
   return '{"code":"ResourceNotFound","message":"' + path + ' does not exist"}'
 }
 
-function createServer (dir, opts, fn) {
+function createServer (dir, opts, mountPoint = '/*', fn) {
   dir = dir || fixtures
 
   var _serve = serveStatic(dir, opts)
-  var server = restify.createServer()
+  var server = restify.createServer() // so that its 6.x compatible
 
   if (fn) {
     server.pre(function applyFn (req, res, next) {
@@ -852,8 +838,23 @@ function createServer (dir, opts, fn) {
     })
   }
 
-  server.pre(_serve)
+  var paths = Array.isArray(mountPoint) ? mountPoint : [mountPoint]
+  paths.forEach(function mountRoute (mountPoint) {
+    // regular routes
+    server.get(mountPoint, _serve, serve404)
+    server.head(mountPoint, _serve, serve404)
+
+    // for testing that POST methods are returned as 405
+    server.post(mountPoint, _serve, serve404)
+    // for testing that OPTIONS fall-through when needed
+    server.opts(mountPoint, _serve, serve404)
+  })
+
   return server
+}
+
+function serve404 (req, res, next) {
+  next(new ResourceNotFoundError('%s does not exist', req.path()))
 }
 
 function shouldNotHaveHeader (header) {

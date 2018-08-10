@@ -204,9 +204,14 @@ var restify = require('restify')
 var serveStatic = require('serve-static-restify')
 
 var app = restify.createServer()
+var handlers = [
+  serveStatic(__dirname + '/public-optimized', { fallthrough: true }),
+  serveStatic(__dirname + '/public', { fallthrough: false })
+]
 
-app.pre(serveStatic(__dirname + '/public-optimized'))
-app.pre(serveStatic(__dirname + '/public'))
+app.get('*', handlers)
+app.head('*', handlers)
+
 app.listen(3000)
 ```
 
@@ -221,11 +226,14 @@ var restify = require('restify')
 var serveStatic = require('serve-static-restify')
 
 var app = restify.createServer()
-
-app.pre(serveStatic(__dirname + '/public', {
+var serve = serveStatic(__dirname + '/public', {
   maxAge: '1d',
+  pathParam: 'file',
   setHeaders: setCustomCacheControl
-}))
+})
+
+app.get('/static/:file', serve)
+app.head('/static/:file', serve)
 
 app.listen(3000)
 
